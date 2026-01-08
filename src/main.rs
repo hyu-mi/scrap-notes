@@ -1,14 +1,7 @@
 mod app;
-mod app_command;
-mod app_error;
-mod app_event;
-mod config;
-mod file_manager;
-mod metadata;
-mod note;
+mod core;
 
-use app::App;
-use config::Config;
+use app::{app::App, config::Config};
 
 // Scrap it!
 fn main() {

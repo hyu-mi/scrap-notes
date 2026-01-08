@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 pub struct Config {
-    pub workspace_dir: PathBuf,
+    pub root_directory: PathBuf,
 }
 
 impl Config {
@@ -13,7 +13,7 @@ impl Config {
         std::fs::create_dir_all(&default_path).expect("Failed to create workspace folder");
 
         Config {
-            workspace_dir: default_path,
+            root_directory: default_path,
         }
     }
 }
