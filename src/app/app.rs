@@ -1,3 +1,7 @@
+use std::str::FromStr;
+
+use uuid::Uuid;
+
 use crate::{Config, core::core::Core};
 
 pub struct App {
@@ -11,9 +15,22 @@ impl App {
     }
 
     pub fn run(&mut self) {
-        let id = self.core.create_text("bog").expect("msg");
+        // Load content from root directory
+        self.core.load_content();
+
+        // ~ test creating and writing files
+        let id = self.core.create_text("bog:").expect("failed to create a file!");
         self.core
-            .write_file_content(id, String::from("This content was created at 15 line of app.rs!"));
+            .write_all(&id, String::from("This content was created in app.rs!"));
+
+        // self.core.create_folder("Hello").expect("failed to create a folder!");
+
+        // ~ test modify existing file
+        let existing_id = Uuid::from_str("8222995c-6900-412f-bd56-c09bb04a0b43").ok().unwrap();
+        self.core.write_all(
+            &existing_id,
+            String::from("cause I can feel a real connection, a supernatural attraction-ah~!"),
+        );
 
         // Auto save trigger !
         self.core.auto_save();
@@ -37,17 +54,5 @@ impl App {
     //             return Ok(AppEvent::FileSaved);
     //         }
     //     }
-    // }
-
-    // fn create_text(self: &Self, name: &str) -> std::io::Result<PathBuf> {
-    //     let result = FileManager::create_file(&self.config.workspace_dir, name, "txt");
-    //     match result {
-    //         Ok(file) => return Ok(PathBuf::from(file)),
-    //         Err(e) => Err(e),
-    //     }
-    // }
-
-    // fn save_text(self: &Self, path: &PathBuf, content: &str) {
-    //     let result = FileManager::save_file(path, content);
     // }
 }
