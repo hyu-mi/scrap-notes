@@ -1,10 +1,12 @@
 use core::error;
 use std::collections::HashMap;
-use std::fs::{File, OpenOptions};
+use std::fs::OpenOptions;
 use std::io::{self, ErrorKind, Read, Write};
 use std::path::Path;
 use std::path::PathBuf;
 use std::{default, fs};
+
+use crate::core::file::File;
 
 pub struct FileManager {}
 
@@ -13,20 +15,24 @@ impl FileManager {
         Self {}
     }
 
-    pub fn create_file(directory: impl AsRef<Path>, name: &str, extension: &str) -> io::Result<(PathBuf, File)> {
-        let mut path = directory.as_ref().join(format!("{name}.{extension}"));
+    pub fn create_file(path: impl AsRef<Path>, name: &str, extension: &str, file_type: String) -> io::Result<(File)> {
+        let mut file_name: String = format!("{name}.{extension}");
+        let mut file_path: PathBuf = path.as_ref().join(&file_name);
+
         let mut open_options = OpenOptions::new();
         open_options.write(true).create_new(true);
 
-        if let Ok(file) = open_options.open(&path) {
-            return Ok((path, file));
+        if let Ok(file) = open_options.open(&file_path) {
+            return Ok(File::new(file_name, file_type, file_path, String::new()));
         }
 
+        // If the file with name already exists, we try appending a number for 256 times
         for i in 1..256 {
-            path.set_file_name(format!("{name}_{i}.{extension}"));
+            file_name = format!("{name}_{i}.{extension}");
+            file_path.set_file_name(&file_name);
 
-            match open_options.open(&path) {
-                Ok(file) => return Ok((path, file)),
+            match open_options.open(&file_path) {
+                Ok(file) => return Ok(File::new(file_name, file_type, file_path, String::new())),
                 Err(e) if e.kind() == io::ErrorKind::AlreadyExists => continue,
                 Err(e) => return Err(e),
             }
@@ -44,22 +50,4 @@ impl FileManager {
             Err(e) => return Err(e),
         }
     }
-
-    // pub fn save_file(self: &mut Self, file_id: &str, content: &str) -> io::Result<()> {
-    //     if let Some(note) = self.notes.get_mut(file_id) {
-    //         // Update the note in memory
-    //         note.write_content(content);
-
-    //         // Write the updated note to the disk
-    //         let mut file = File::create(&note.directory)?;
-    //         file.write_all(note.compose().as_bytes())?;
-
-    //         Ok(())
-    //     } else {
-    //         Err(io::Error::new(
-    //             io::ErrorKind::Other,
-    //             format!("No file with id: {} found!", file_id),
-    //         ))
-    //     }
-    // }
 }

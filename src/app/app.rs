@@ -12,7 +12,11 @@ impl App {
 
     pub fn run(&mut self) {
         let id = self.core.create_text("bog").expect("msg");
-        self.core.save_file(&id);
+        self.core
+            .write_file_content(id, String::from("This content was created at 15 line of app.rs!"));
+
+        // Auto save trigger !
+        self.core.auto_save();
     }
 
     // pub fn handle_command(self: &mut Self, command: AppCommand) -> Result<AppEvent, AppError> {
