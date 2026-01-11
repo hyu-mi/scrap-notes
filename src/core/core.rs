@@ -37,8 +37,15 @@ impl Core {
         }
     }
 
-    pub fn auto_save(self: &mut Self) {
+    pub fn save_all_dirty_files(self: &mut Self) {
         for file in self.files.values_mut().filter(|f| f.is_dirty) {
+            Self::save(&file);
+            file.clear_dirty();
+        }
+    }
+
+    pub fn force_save_all_files(self: &mut Self) {
+        for file in self.files.values_mut() {
             Self::save(&file);
             file.clear_dirty();
         }
@@ -91,6 +98,8 @@ impl Core {
     pub fn write_all(self: &mut Self, id: &Uuid, content: String) {
         if let Some(file) = self.files.get_mut(&id) {
             file.write_content(content);
+        } else {
+            println!("f8h 380hfd80UUUUUUUUUUUUUUUUUUUe3u8u8u8u8u8u8u8u8u8u8u8u8u8u8u8u8u8u8u8u8u8u8e")
         }
     }
 }

@@ -19,21 +19,24 @@ impl App {
         self.core.load_content();
 
         // ~ test creating and writing files
-        let id = self.core.create_text("bog:").expect("failed to create a file!");
+        let id = self
+            .core
+            .create_text("  bog  __--- engine:  ")
+            .expect("failed to create a file!");
         self.core
             .write_all(&id, String::from("This content was created in app.rs!"));
 
         // self.core.create_folder("Hello").expect("failed to create a folder!");
 
         // ~ test modify existing file
-        let existing_id = Uuid::from_str("8222995c-6900-412f-bd56-c09bb04a0b43").ok().unwrap();
+        let existing_id = Uuid::from_str("e80651a4-c1d3-42e6-8962-82a8005ca9cc").ok().unwrap();
         self.core.write_all(
             &existing_id,
             String::from("cause I can feel a real connection, a supernatural attraction-ah~!"),
         );
 
         // Auto save trigger !
-        self.core.auto_save();
+        self.core.save_all_dirty_files();
     }
 
     // pub fn handle_command(self: &mut Self, command: AppCommand) -> Result<AppEvent, AppError> {

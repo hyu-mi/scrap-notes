@@ -37,7 +37,10 @@ impl FileManager {
         let mut files: Vec<File> = Vec::new();
         for path in paths {
             if let Ok(file) = Self::open_file(&path) {
+                println!("Success! file name: \"{}\"", &file.display_name);
                 files.push(file);
+            } else {
+                println!("Nope");
             };
         }
 
@@ -84,8 +87,9 @@ impl FileManager {
     // }
 
     pub fn open_file(path: impl AsRef<Path>) -> Result<File, AppError> {
-        match fs::OpenOptions::new().read(true).open(&path) {
-            Ok(mut file) => match File::parse(&mut file, &path) {
+        let path = path.as_ref();
+        match fs::OpenOptions::new().read(true).open(path) {
+            Ok(mut file) => match File::parse(&mut file, path) {
                 Some(file) => return Ok(file),
                 _ => return Err(AppError::Unknown(String::from("Could not parse file content!"))),
             },
@@ -146,16 +150,30 @@ impl FileManager {
 
     // ~
     fn slugify(name: &str) -> String {
+        let mut prev_dash = false;
         return name
             .chars()
             .filter_map(|c| match c {
-                ' ' | '_' => Some('-'),
-                '-' => Some(c),
-                '0'..='1' => Some(c),
-                'A'..='Z' => Some(c.to_ascii_lowercase()),
-                'a'..='z' => Some(c),
+                'a'..='z' | '0'..='9' => {
+                    prev_dash = false;
+                    Some(c)
+                }
+                'A'..='Z' => {
+                    prev_dash = false;
+                    Some(c.to_ascii_lowercase())
+                }
+                ' ' | '_' if !prev_dash => {
+                    prev_dash = true;
+                    Some('-')
+                }
+                '-' if !prev_dash => {
+                    prev_dash = true;
+                    Some(c)
+                }
                 _ => None,
             })
-            .collect();
+            .collect::<String>()
+            .trim_matches('-')
+            .to_string();
     }
 }
