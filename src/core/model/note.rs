@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::core::model::note_metadata::NoteMetadata;
 use std::path::PathBuf;
 
@@ -18,8 +20,12 @@ impl Note {
         }
     }
 
-    pub fn get_path(self: &Self) -> PathBuf {
+    pub fn get_relative_path(self: &Self) -> PathBuf {
         return self.path.clone();
+    }
+
+    pub fn get_id(self: &Self) -> Uuid {
+        return self.metadata.get_id();
     }
 
     pub fn compose(self: &Self) -> String {

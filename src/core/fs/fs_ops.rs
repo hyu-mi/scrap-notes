@@ -28,5 +28,6 @@ pub fn open_file(path: impl AsRef<Path>) -> io::Result<File> {
     return OpenOptions::new()
         .read(true)
         .write(true)
+        .create(false)
         .open(path.as_ref());
 }

@@ -10,16 +10,13 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use uuid::Uuid;
 
-pub fn parse_file_to_note(
-    file: &mut File,
-    path: impl AsRef<Path>,
-) -> Option<Note> {
+pub fn parse_file_to_note(file: &mut File, path: impl AsRef<Path>) -> Option<Note> {
     let mut file_content = String::new();
     file.seek(SeekFrom::Start(0)).ok()?;
     file.read_to_string(&mut file_content).ok()?;
 
     let mut id: Option<Uuid> = None;
-    let mut display_name: Option<String> = None;
+    let mut title: Option<String> = None;
     let mut file_type: Option<String> = None;
 
     let mut offset = 0;
@@ -50,9 +47,7 @@ pub fn parse_file_to_note(
 
                 match key.trim() {
                     "id" => id = Some(Uuid::from_str(extracted).ok()?),
-                    "display-name" => {
-                        display_name = Some(extracted.to_string())
-                    }
+                    "title" => title = Some(extracted.to_string()),
                     "type" => file_type = Some(extracted.to_string()),
                     _ => {}
                 }
@@ -65,10 +60,10 @@ pub fn parse_file_to_note(
         return None;
     }
 
-    let (id, display_name, file_type) = (id?, display_name?, file_type?);
+    let (id, title, file_type) = (id?, title?, file_type?);
 
     let content = file_content[offset..].to_string();
-    let metadata = NoteMetadata::new(Uuid::new_v4(), &display_name, &file_type);
+    let metadata = NoteMetadata::new(id, &title, &file_type);
     return Some(Note::new(metadata, PathBuf::from(path.as_ref())));
 }
 

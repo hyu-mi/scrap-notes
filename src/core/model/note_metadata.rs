@@ -15,10 +15,16 @@ impl NoteMetadata {
         }
     }
 
+    pub fn get_id(self: &Self) -> Uuid {
+        return self.id.clone();
+    }
+
     pub fn compose(self: &Self) -> String {
         return format!(
             "id: \"{}\"\ntitle: \"{}\"\ntype: \"{}\"\n---\n",
-            self.id, self.title, self.file_type
+            self.id.to_string(),
+            self.title,
+            self.file_type
         );
     }
 }
