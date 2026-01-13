@@ -1,11 +1,12 @@
-mod app;
 mod core;
 
-use app::{app::App, config::Config};
+use crate::core::app::App;
 
 // Scrap it!
 fn main() {
-    let config = Config::load();
-    let mut app = App::new(config);
+    let path = std::env::current_dir().expect("Failed to get current directory").join(".workspace");
+    std::fs::create_dir_all(&path).expect("Failed to create workspace folder");
+
+    let app = App::new(path);
     app.run();
 }

@@ -1,4 +1,4 @@
-pub mod core;
-pub mod file;
-pub mod file_manager;
-pub mod folder;
+pub mod app;
+pub mod fs;
+pub mod model;
+pub mod parser;
