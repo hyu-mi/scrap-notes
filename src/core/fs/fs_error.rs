@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum FSError {
     NotADirectory(String),
     PermissionDenied(String),
@@ -6,6 +6,7 @@ pub enum FSError {
     SecurityError(String),
     FileDoesNotExist,
     NameExhausted,
+    AlreadyExist,
     Unknown(String),
 }
 
@@ -18,10 +19,16 @@ impl FSError {
             std::io::ErrorKind::PermissionDenied => {
                 return Self::PermissionDenied("Could not get read write permission".to_string());
             }
+            std::io::ErrorKind::AlreadyExists => {
+                return Self::AlreadyExist;
+            }
             std::io::ErrorKind::InvalidFilename => {
                 return Self::FileDoesNotExist;
             }
-            _ => return Self::Unknown("".to_string()),
+            std::io::ErrorKind::NotFound => {
+                return Self::FileDoesNotExist;
+            }
+            _ => return Self::Unknown(format!("{}", err)),
         }
     }
 }

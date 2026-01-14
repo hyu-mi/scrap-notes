@@ -7,16 +7,24 @@ pub struct NoteMetadata {
 }
 
 impl NoteMetadata {
-    pub fn new(id: Uuid, title: &str, file_type: &str) -> Self {
+    pub fn new(id: Uuid, title: impl Into<String>, file_type: impl Into<String>) -> Self {
         Self {
             id,
-            title: String::from(title),
-            file_type: String::from(file_type),
+            title: title.into(),
+            file_type: file_type.into(),
         }
     }
 
     pub fn get_id(self: &Self) -> Uuid {
         return self.id.clone();
+    }
+
+    pub fn get_title(self: &Self) -> String {
+        return self.title.clone();
+    }
+
+    pub fn get_file_type(self: &Self) -> String {
+        return self.file_type.clone();
     }
 
     pub fn compose(self: &Self) -> String {

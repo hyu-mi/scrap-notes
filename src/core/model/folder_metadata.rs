@@ -6,11 +6,19 @@ pub struct FolderMetadata {
 }
 
 impl FolderMetadata {
-    pub fn new(id: Uuid, display_name: &str) -> Self {
+    pub fn new(id: Uuid, display_name: impl Into<String>) -> Self {
         return Self {
             id,
-            display_name: display_name.to_string(),
+            display_name: display_name.into(),
         };
+    }
+
+    pub fn get_id(self: &Self) -> Uuid {
+        return self.id.clone();
+    }
+
+    pub fn get_name(self: &Self) -> String {
+        return self.display_name.clone();
     }
 
     pub fn compose(self: &Self) -> String {
