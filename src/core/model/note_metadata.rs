@@ -11,7 +11,7 @@ impl NoteMetadata {
         Self {
             id,
             title: title.into(),
-            file_type: file_type.into(),
+            file_type: file_type.into().to_ascii_lowercase(),
         }
     }
 

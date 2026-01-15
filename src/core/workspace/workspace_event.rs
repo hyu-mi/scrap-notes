@@ -1,0 +1,3 @@
+pub enum WorkspaceEvent {
+    NoteSaved,
+}

@@ -1,7 +1,11 @@
-use uuid::Uuid;
+use crate::core::model::note::Note;
+use crate::core::workspace::workspace::Workspace;
 
-use crate::core::{fs::workspace::Workspace, model::note::Note};
-use std::{collections::HashMap, path::PathBuf, str::FromStr};
+use std::collections::HashMap;
+use std::path::Path;
+use std::path::PathBuf;
+use std::str::FromStr;
+use uuid::Uuid;
 
 pub struct App {
     workspace: Workspace,
@@ -15,31 +19,27 @@ impl App {
     }
 
     pub fn run(self: &Self) {
-        {
-            // Create a new note
-            let mut note = self
-                .workspace
-                .create_note(&PathBuf::new(), "상추", "rich-text")
-                .expect("Failed to create note");
-
-            note.write_all("I wrote this, I am danger");
-
-            self.workspace
-                .save_note(&note)
-                .expect("Failed to save note");
-        }
-
-        let (mut notes, mut folders) = self
+        // Create new note
+        let mut new_note = self
             .workspace
-            .scan_all_notes()
-            .expect("Failed to scan all notes");
+            .create_note(&PathBuf::new(), "Loona", "rich-text")
+            .expect("Failed to create new note");
 
-        for (id, folder) in folders {
-            folder.print();
-        }
+        new_note.write_all("Boy I, boy I, boy I know");
 
-        for (id, note) in notes {
-            note.print();
-        }
+        self.workspace.save_note(&new_note).expect("Failed to save new note");
+
+        // Load an existing note
+        let existing_note_path = PathBuf::from("loona.txt");
+        let mut existing_note = self
+            .workspace
+            .load_note(&existing_note_path)
+            .expect("Failed to load existing note");
+
+        existing_note.write_all("Writing an existing note");
+
+        self.workspace
+            .save_note(&existing_note)
+            .expect("Failed to save existing ntoe");
     }
 }
