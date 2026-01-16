@@ -23,7 +23,7 @@ impl FolderMetadata {
 
     pub fn compose(self: &Self) -> String {
         return format!(
-            "id: \"{}\"\ndisplay-name: \"{}\"\n---\n",
+            "---\nid: \"{}\"\ndisplay-name: \"{}\"\n---\n",
             self.id, self.display_name
         );
     }

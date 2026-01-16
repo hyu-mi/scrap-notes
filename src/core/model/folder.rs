@@ -1,4 +1,5 @@
 use crate::core::{model::folder_metadata::FolderMetadata, parser::parse_folder::FolderData};
+use std::path::Path;
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -41,13 +42,20 @@ impl Folder {
         return self.metadata.get_id();
     }
 
-    pub fn get_relative_path(self: &Self) -> PathBuf {
-        return self.relative_path.clone();
+    pub fn get_relative_path(self: &Self) -> &Path {
+        return &self.relative_path;
+    }
+
+    pub fn get_metadata_file_dir(self: &Self) -> PathBuf {
+        return self.relative_path.join(".metadata.txt");
     }
 
     pub fn compose(self: &Self) -> String {
-        let out = self.metadata.compose();
-        return out;
+        return self.metadata.compose();
+    }
+
+    pub fn set_metadata(self: &mut Self, metadata: FolderMetadata) {
+        self.metadata = metadata;
     }
 
     pub fn print(self: &Self) {
