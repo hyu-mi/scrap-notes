@@ -1,0 +1,9 @@
+[package]
+name = "scrap-core"
+version = "0.67.0"
+edition = "2024"
+authors = ["Hyemi Baek <kimchi_mi@kakao.com>"]
+license = "MIT"
+
+[dependencies]
+uuid = { version = "1.0", features = ["v4"] }

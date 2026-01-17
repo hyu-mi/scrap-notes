@@ -16,7 +16,6 @@ use uuid::uuid;
 pub struct Core {
     workspace: Workspace,
     workspace_id: Uuid,
-
     notes: HashMap<Uuid, Note>,
     folders: HashMap<Uuid, Folder>,
 }
@@ -47,6 +46,16 @@ impl Core {
         }
     }
 
+    pub fn print_content(self: &Self) {
+        println!("");
+        for (id, note) in &self.notes {
+            note.print();
+        }
+        for (id, folder) in &self.folders {
+            folder.print();
+        }
+    }
+
     pub fn create_note(self: &mut Self, folder_id: Uuid, title: &str, file_type: &str) -> Result<CoreEvent, CoreError> {
         let parent_dir = self.get_directory(folder_id)?;
 
@@ -59,7 +68,7 @@ impl Core {
 
                 return Ok(CoreEvent::NoteCreated(note_id));
             }
-            Err(WorkspaceError::NameExhausted) => {
+            Err(WorkspaceError::FileNameExhausted) => {
                 //
                 return Err(CoreError::NameCollision {
                     name: title.to_string(),
@@ -91,7 +100,7 @@ impl Core {
 
                 return Ok(CoreEvent::FolderCreated(folder_id));
             }
-            Err(WorkspaceError::NameExhausted) => {
+            Err(WorkspaceError::FolderNameExhausted) => {
                 //
                 return Err(CoreError::NameCollision {
                     name: display_name.to_string(),

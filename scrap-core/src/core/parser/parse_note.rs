@@ -23,33 +23,34 @@ impl NoteData {
 pub fn parse_note(input: String) -> NoteData {
     let mut out_data = NoteData::new();
 
-    let first_line = input.lines().next().unwrap_or("").trim();
+    let mut opening_delimiter_found = false;
+    let mut closing_delimiter_found = false;
 
-    let mut metadata_end_line_found = false;
     let mut metadata_end_byte_offset = 0;
+    let mut current_byte_offset = 0;
 
-    // Find the closing delimiter
     for (index, line) in input.lines().enumerate() {
         let trimmed = line.trim();
+        current_byte_offset += line.len() + 1;
 
-        // Skip the very first line if the starting delimiter exists
-        if index == 0 && first_line == "---" {
+        // Skip opening delimiter
+        if index == 0 && trimmed == "---" {
+            opening_delimiter_found = true;
             continue;
         }
 
+        // Found closing delimiter
         if trimmed == "---" {
-            metadata_end_line_found = true;
+            closing_delimiter_found = true;
 
-            if let Some(offset) = input.find(line) {
-                metadata_end_byte_offset = offset + line.len();
-            }
+            metadata_end_byte_offset = current_byte_offset;
             break;
         }
     }
 
-    // Closing delimiter not found, return the whole input as body
-    if !metadata_end_line_found {
-        out_data.body = input.to_string();
+    // No opening or closing delimiter not found, return the whole input as body
+    if !opening_delimiter_found || !closing_delimiter_found {
+        out_data.body = input;
         return out_data;
     }
 
@@ -68,11 +69,6 @@ pub fn parse_note(input: String) -> NoteData {
                 // No value found inside qouted, invalid
                 continue;
             };
-
-            // Empty values are invalid
-            if extracted_value.is_empty() {
-                continue;
-            }
 
             match key.trim() {
                 "id" => {

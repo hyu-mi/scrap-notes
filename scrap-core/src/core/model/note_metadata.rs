@@ -29,7 +29,7 @@ impl NoteMetadata {
 
     pub fn compose(self: &Self) -> String {
         return format!(
-            "id: \"{}\"\ntitle: \"{}\"\ntype: \"{}\"\n---\n",
+            "---\nid: \"{}\"\ntitle: \"{}\"\ntype: \"{}\"\n---\n",
             self.id.to_string(),
             self.title,
             self.file_type

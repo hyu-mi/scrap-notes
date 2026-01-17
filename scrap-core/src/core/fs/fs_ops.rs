@@ -27,6 +27,7 @@ pub fn delete_file(workspace_dir: &Path, target_dir: &Path) -> io::Result<()> {
     return Ok(());
 }
 
+// TODO: Shouldn't I care about puter loosing power mid write?...
 pub fn write_file(workspace_dir: &Path, target_dir: &Path, content: &str) -> io::Result<()> {
     let target = resolve_existing_path(workspace_dir, target_dir)?;
 

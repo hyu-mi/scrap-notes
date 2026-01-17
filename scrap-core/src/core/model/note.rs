@@ -8,6 +8,7 @@ pub struct Note {
     metadata: NoteMetadata,
     body: String,
     is_dirty: bool,
+    // TODO: Need a last modified var so we can sync without opening the file...
 }
 
 impl Note {
@@ -32,13 +33,7 @@ impl Note {
         });
 
         // TODO: resolve file type by detecting it
-        let file_type = data.file_type.unwrap_or_else(|| {
-            relative_path
-                .file_stem()
-                .and_then(|s| s.to_str())
-                .unwrap_or("rich-text")
-                .to_string()
-        });
+        let file_type = data.file_type.unwrap_or("rich-text".to_string());
 
         let metadata = NoteMetadata::new(id, title, file_type);
 
@@ -68,17 +63,46 @@ impl Note {
         self.body = content.to_string();
     }
 
-    pub fn print(self: &Self) {
-        let id = self.metadata.get_id();
+    pub fn print(&self) {
+        // Clanker made code ahead! 🤖
+
         let title = self.metadata.get_title();
         let file_type = self.metadata.get_file_type();
+        let id = self.metadata.get_id().to_string();
 
+        let cyan = "\x1b[38;5;213m";
+        let gray = "\x1b[90m";
+        let bold = "\x1b[1m";
+        let reset = "\x1b[0m";
+
+        let width = 60;
+        let horiz = "─".repeat(width);
+
+        println!("{gray}╭{}╮{reset}", horiz);
+
+        let title_line = format!("{:<width$}", title, width = width - 5);
+        println!("{gray}│{reset} 📝 {cyan}{bold}{}{reset} {gray}│{reset}", title_line);
+
+        println!("{gray}├{}┤{reset}", horiz);
+
+        // Front matter
+        let id_line = format!("{:<width$}", id, width = width - 8);
+        println!("{gray}│{reset} {gray}ID:   {reset}{} {gray}│{reset}", id_line);
+
+        let type_line = format!("{:<width$}", file_type, width = width - 8);
         println!(
-            "File {}:\nid: {}\ntitle: {}\nfile-type: {}\n",
-            &title,
-            id.to_string(),
-            &title,
-            &file_type
+            "{gray}│{reset} {gray}TYPE: {reset}{bold}{}{reset} {gray}│{reset}",
+            type_line
         );
+
+        println!("{gray}├{}┤{reset}", horiz);
+
+        // Body
+        for line in self.body.lines() {
+            let content_line = format!("{:<width$}", line, width = width - 2);
+            println!("{gray}│{reset} {} {gray}│{reset}", content_line);
+        }
+
+        println!("{gray}╰{}╯{reset}", horiz);
     }
 }

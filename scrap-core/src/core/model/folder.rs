@@ -47,7 +47,7 @@ impl Folder {
     }
 
     pub fn get_metadata_file_dir(self: &Self) -> PathBuf {
-        return self.relative_path.join(".metadata.txt");
+        return self.relative_path.join("_metadata.txt");
     }
 
     pub fn compose(self: &Self) -> String {
@@ -58,15 +58,25 @@ impl Folder {
         self.metadata = metadata;
     }
 
-    pub fn print(self: &Self) {
+    pub fn print(&self) {
         let display_name = self.metadata.get_name();
-        let id = self.metadata.get_id();
+        let id = self.metadata.get_id().to_string();
 
-        println!(
-            "Folder {}:\nid: {}\ndisplay-name: {}\n",
-            &display_name,
-            id.to_string(),
-            &display_name
-        );
+        let yellow = "\x1b[33m";
+        let gray = "\x1b[90m";
+        let bold = "\x1b[1m";
+        let reset = "\x1b[0m";
+
+        let width = 60;
+        let horiz = "─".repeat(width);
+
+        println!("{gray}╭{}╮{reset}", horiz);
+
+        let breadcrumb = format!("📂 /{} ({})", display_name, id);
+        let padded_content = format!("{:<width$}", breadcrumb, width = width - 3);
+
+        println!("{gray}│{reset} {yellow}{bold}{}{reset} {gray}│{reset}", padded_content);
+
+        println!("{gray}╰{}╯{reset}", horiz);
     }
 }
