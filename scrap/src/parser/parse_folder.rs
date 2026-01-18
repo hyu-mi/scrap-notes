@@ -1,21 +1,8 @@
+use crate::model::{Folder, FolderData};
+use crate::text::extract_quoted::extract_quoted;
+
 use std::str::FromStr;
 use uuid::Uuid;
-
-use crate::core::text::extract_quoted::extract_quoted;
-
-pub struct FolderData {
-    pub id: Option<Uuid>,
-    pub display_name: Option<String>,
-}
-
-impl FolderData {
-    pub fn new() -> Self {
-        return Self {
-            id: None,
-            display_name: None,
-        };
-    }
-}
 
 pub fn parse_folder(input: String) -> FolderData {
     let mut out_data = FolderData::new();

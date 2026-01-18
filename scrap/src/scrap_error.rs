@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 #[derive(Debug)]
-pub enum CoreError {
+pub enum ScrapError {
     NoteNotFound(Uuid),
     FolderNotFound(Uuid),
 

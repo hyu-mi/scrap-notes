@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "scrap-core",
+    "scrap",
     "scrap-cli",
 ]
 resolver = "2"

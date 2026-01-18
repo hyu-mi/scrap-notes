@@ -17,8 +17,8 @@ impl FolderMetadata {
         return self.id.clone();
     }
 
-    pub fn get_name(self: &Self) -> String {
-        return self.display_name.clone();
+    pub fn get_display_name(self: &Self) -> &str {
+        return &self.display_name;
     }
 
     pub fn compose(self: &Self) -> String {

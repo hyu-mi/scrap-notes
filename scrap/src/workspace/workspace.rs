@@ -1,17 +1,8 @@
-use crate::core::fs::fs_ops;
-use crate::core::model::folder;
-use crate::core::model::folder::Folder;
-use crate::core::model::folder_metadata::FolderMetadata;
-use crate::core::model::note::Note;
-use crate::core::model::note_metadata::NoteMetadata;
-use crate::core::parser::parse_folder::FolderData;
-use crate::core::parser::parse_folder::parse_folder;
-use crate::core::parser::parse_note::NoteData;
-use crate::core::parser::parse_note::parse_note;
-use crate::core::text::sanitize_name::sanitize_name;
-use crate::core::text::slugify::slugify;
-use crate::core::workspace::workspace_error::WorkspaceError;
-use crate::core::workspace::workspace_event::WorkspaceEvent;
+use crate::fs::fs_ops;
+use crate::model::{Folder, FolderData, FolderMetadata, Note, NoteData, NoteMetadata};
+use crate::parser::{parse_folder::parse_folder, parse_note::parse_note};
+use crate::text::{sanitize_name::sanitize_name, slugify::slugify};
+use crate::workspace::{WorkspaceError, WorkspaceEvent};
 
 use std::collections::HashMap;
 use std::fmt::Write;

@@ -1,4 +1,6 @@
-use crate::core::{model::folder_metadata::FolderMetadata, parser::parse_folder::FolderData};
+use crate::model::FolderData;
+use crate::model::FolderMetadata;
+
 use std::path::Path;
 use std::path::PathBuf;
 use uuid::Uuid;
@@ -42,6 +44,10 @@ impl Folder {
         return self.metadata.get_id();
     }
 
+    pub fn get_display_name(self: &Self) -> &str {
+        return self.metadata.get_display_name();
+    }
+
     pub fn get_relative_path(self: &Self) -> &Path {
         return &self.relative_path;
     }
@@ -59,7 +65,7 @@ impl Folder {
     }
 
     pub fn print(&self) {
-        let display_name = self.metadata.get_name();
+        let display_name = self.metadata.get_display_name();
         let id = self.metadata.get_id().to_string();
 
         let yellow = "\x1b[33m";

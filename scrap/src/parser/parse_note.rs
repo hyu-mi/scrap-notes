@@ -1,24 +1,8 @@
-use crate::core::text::extract_quoted::extract_quoted;
+use crate::model::{Note, NoteData};
+use crate::text::extract_quoted::extract_quoted;
+
 use std::str::FromStr;
 use uuid::Uuid;
-
-pub struct NoteData {
-    pub id: Option<Uuid>,
-    pub title: Option<String>,
-    pub file_type: Option<String>,
-    pub body: String,
-}
-
-impl NoteData {
-    pub fn new() -> Self {
-        return Self {
-            id: None,
-            title: None,
-            file_type: None,
-            body: String::new(),
-        };
-    }
-}
 
 pub fn parse_note(input: String) -> NoteData {
     let mut out_data = NoteData::new();

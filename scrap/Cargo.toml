@@ -1,5 +1,5 @@
 [package]
-name = "scrap-core"
+name = "scrap"
 version = "0.67.0"
 edition = "2024"
 authors = ["Hyemi Baek <kimchi_mi@kakao.com>"]

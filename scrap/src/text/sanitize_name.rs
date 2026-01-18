@@ -1,4 +1,4 @@
-use crate::core::text::slugify::slugify;
+use crate::text::slugify::slugify;
 
 pub fn sanitize_name(input: &str, max_name_length: usize) -> String {
     let base_slug = slugify(input);

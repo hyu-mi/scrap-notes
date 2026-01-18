@@ -1,7 +1,8 @@
-use uuid::Uuid;
+use crate::model::NoteData;
+use crate::model::NoteMetadata;
 
-use crate::core::{model::note_metadata::NoteMetadata, parser::parse_note::NoteData};
 use std::path::PathBuf;
+use uuid::Uuid;
 
 pub struct Note {
     relative_path: PathBuf,
@@ -51,6 +52,14 @@ impl Note {
 
     pub fn get_id(self: &Self) -> Uuid {
         return self.metadata.get_id();
+    }
+
+    pub fn get_title(self: &Self) -> &str {
+        return self.metadata.get_title();
+    }
+
+    pub fn get_file_type(self: &Self) -> &str {
+        return self.metadata.get_file_type();
     }
 
     pub fn compose(self: &Self) -> String {

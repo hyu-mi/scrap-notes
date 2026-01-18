@@ -6,6 +6,6 @@ authors = ["Hyemi Baek <kimchi_mi@kakao.com>"]
 license = "MIT"
 
 [dependencies]
-scrap-core = { path = "../scrap-core" }
+scrap = { path = "../scrap" }
 uuid = { version = "1.0", features = ["v4"] }
 clap = { version = "4.0", features = ["derive"] }

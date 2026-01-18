@@ -19,12 +19,12 @@ impl NoteMetadata {
         return self.id.clone();
     }
 
-    pub fn get_title(self: &Self) -> String {
-        return self.title.clone();
+    pub fn get_title(self: &Self) -> &str {
+        return &self.title;
     }
 
-    pub fn get_file_type(self: &Self) -> String {
-        return self.file_type.clone();
+    pub fn get_file_type(self: &Self) -> &str {
+        return &self.file_type;
     }
 
     pub fn compose(self: &Self) -> String {
