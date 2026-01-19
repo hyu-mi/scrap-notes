@@ -8,6 +8,10 @@ pub struct CliArgs {
 
 #[derive(Subcommand)]
 pub enum CliCommand {
+    Open {
+        note_id: String,
+    },
+
     Note {
         title: String,
         #[arg(short, long, default_value = "plain-text")]

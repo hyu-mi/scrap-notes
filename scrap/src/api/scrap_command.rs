@@ -1,5 +1,6 @@
 use uuid::Uuid;
 
+#[derive(Debug)]
 pub enum ScrapCommand {
     // Workspace related
     SyncWorkspace,

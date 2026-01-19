@@ -3,9 +3,11 @@ use std::path::PathBuf;
 use uuid::{Uuid, uuid};
 
 mod app;
+mod app_error;
 mod cli;
 
 use app::App;
+use app_error::AppError;
 use cli::CliArgs;
 
 fn main() {
@@ -13,6 +15,8 @@ fn main() {
 
     let workspace_dir = get_workspace_dir();
     let mut app = App::new(workspace_dir);
+
+    app.init().expect("Failed to initialize app");
     app.execute(args.command);
 }
 
