@@ -28,10 +28,7 @@ impl Workspace {
         return Self { workspace_dir };
     }
 
-    pub fn scan_all(
-        self: &Self,
-        workspace_id: Uuid,
-    ) -> Result<(HashMap<Uuid, Note>, HashMap<Uuid, Folder>), WorkspaceError> {
+    pub fn scan_all(self: &Self, workspace_id: Uuid) -> Result<(Vec<Note>, Vec<Folder>), WorkspaceError> {
         return Self::load_directory(&self.workspace_dir, &PathBuf::new(), workspace_id);
     }
 
@@ -253,9 +250,9 @@ impl Workspace {
         workspace_dir: &Path,
         current_dir: &Path,
         parent_id: Uuid,
-    ) -> Result<(HashMap<Uuid, Note>, HashMap<Uuid, Folder>), WorkspaceError> {
-        let mut notes = HashMap::new();
-        let mut folders = HashMap::new();
+    ) -> Result<(Vec<Note>, Vec<Folder>), WorkspaceError> {
+        let mut notes = Vec::new();
+        let mut folders = Vec::new();
 
         for entry in fs_ops::read_directory(workspace_dir, current_dir).map_err(WorkspaceError::from_io)? {
             let entry = entry.map_err(WorkspaceError::from_io)?;
@@ -276,7 +273,7 @@ impl Workspace {
                     let note_data = Self::load_note_data(workspace_dir, &relative_path)?;
 
                     let note = Note::from_data(relative_path, note_data);
-                    notes.insert(note.get_id(), note);
+                    notes.push(note);
                 }
                 continue;
             }
@@ -287,9 +284,8 @@ impl Workspace {
 
                 let folder_data = Self::load_folder_data(workspace_dir, &folder_dir)?;
                 let folder = Folder::from_data(folder_dir.clone(), folder_data, parent_id);
-
                 let folder_id = folder.get_id();
-                folders.insert(folder_id.clone(), folder);
+                folders.push(folder);
 
                 // Recurse into subfolder
                 let (child_notes, child_folders) = Self::load_directory(workspace_dir, &folder_dir, folder_id)?;

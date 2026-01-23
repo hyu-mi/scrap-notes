@@ -1,7 +1,8 @@
-use crate::api::{ScrapCommand, ScrapError, ScrapEvent};
-use crate::app::App;
+use crate::api::{FolderSummary, NoteSummary, ScrapError};
+use crate::app::{App, AppEvent};
 
 use std::path::PathBuf;
+use uuid::Uuid;
 
 pub struct Scrap {
     app: App,
@@ -14,44 +15,33 @@ impl Scrap {
         }
     }
 
-    pub fn handle_command(self: &mut Self, cmd: ScrapCommand) -> Result<ScrapEvent, ScrapError> {
-        match cmd {
-            ScrapCommand::SyncWorkspace => {
-                return self
-                    .app
-                    .load_workspace()
-                    .map(ScrapEvent::from_app)
-                    .map_err(ScrapError::from_app);
-            }
-
-            ScrapCommand::ListNotes => return Ok(ScrapEvent::NoteList(self.app.list_notes())),
-
-            ScrapCommand::ListFolders => return Ok(ScrapEvent::FolderList(self.app.list_folders())),
-
-            ScrapCommand::CreateNote {
-                parent_id,
-                title,
-                file_type,
-            } => {
-                return self
-                    .app
-                    .create_note(parent_id, title, file_type)
-                    .map(ScrapEvent::from_app)
-                    .map_err(ScrapError::from_app);
-            }
-
-            ScrapCommand::CreateFolder {
-                parent_id,
-                display_name,
-            } => {
-                return self
-                    .app
-                    .create_folder(parent_id, display_name)
-                    .map(ScrapEvent::from_app)
-                    .map_err(ScrapError::from_app);
-            }
-        }
-
-        return Err(ScrapError::NotImplemented(format!("Command is not implemented yet")));
+    pub fn sync_workspace(self: &mut Self) -> Result<(), ScrapError> {
+        return self.app.load_workspace().map(|_| ()).map_err(ScrapError::from_app);
     }
+
+    pub fn list_notes(self: &mut Self) -> Result<Vec<NoteSummary>, ScrapError> {
+        return Ok(self.app.list_notes());
+    }
+
+    pub fn list_folders(self: &mut Self) -> Result<Vec<FolderSummary>, ScrapError> {
+        return Ok(self.app.list_folders());
+    }
+
+    pub fn create_note(self: &mut Self, parent_id: Uuid, title: String, file_type: String) -> Result<Uuid, ScrapError> {
+        return self
+            .app
+            .create_note(parent_id, title, file_type)
+            .map_err(ScrapError::from_app);
+    }
+
+    pub fn create_folder(self: &mut Self, parent_id: Uuid, display_name: String) -> Result<Uuid, ScrapError> {
+        return self
+            .app
+            .create_folder(parent_id, display_name)
+            .map_err(ScrapError::from_app);
+    }
+
+    // pub fn get_note(self: &mut Self) -> Result<(), ScrapError> {
+    //     //
+    // }
 }

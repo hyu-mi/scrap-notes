@@ -19,6 +19,7 @@ impl ScrapError {
             AppError::NoteNotFound(id) => return Self::NoteNotFound(id),
             AppError::FolderNotFound(id) => return Self::FolderNotFound(id),
 
+            AppError::Workspace(err) => return Self::Unknown(format!("Workspace Error: {:?}", err)),
             AppError::Unknown(msg) => return Self::Unknown(msg),
         }
     }

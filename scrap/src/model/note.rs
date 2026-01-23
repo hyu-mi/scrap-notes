@@ -1,6 +1,7 @@
 use crate::model::NoteData;
 use crate::model::NoteMetadata;
 
+use std::path::Path;
 use std::path::PathBuf;
 use uuid::Uuid;
 
@@ -46,8 +47,8 @@ impl Note {
         };
     }
 
-    pub fn get_relative_path(self: &Self) -> PathBuf {
-        return self.relative_path.clone();
+    pub fn get_relative_path(self: &Self) -> &Path {
+        return &self.relative_path;
     }
 
     pub fn get_id(self: &Self) -> Uuid {
@@ -62,6 +63,10 @@ impl Note {
         return self.metadata.get_file_type();
     }
 
+    pub fn get_body(self: &Self) -> &str {
+        return &self.body;
+    }
+
     pub fn compose(self: &Self) -> String {
         let mut out = self.metadata.compose();
         out.push_str(&self.body);
@@ -70,48 +75,5 @@ impl Note {
 
     pub fn write_all(self: &mut Self, content: &str) {
         self.body = content.to_string();
-    }
-
-    pub fn print(&self) {
-        // Clanker made code ahead! 🤖
-
-        let title = self.metadata.get_title();
-        let file_type = self.metadata.get_file_type();
-        let id = self.metadata.get_id().to_string();
-
-        let cyan = "\x1b[38;5;213m";
-        let gray = "\x1b[90m";
-        let bold = "\x1b[1m";
-        let reset = "\x1b[0m";
-
-        let width = 60;
-        let horiz = "─".repeat(width);
-
-        println!("{gray}╭{}╮{reset}", horiz);
-
-        let title_line = format!("{:<width$}", title, width = width - 5);
-        println!("{gray}│{reset} 📝 {cyan}{bold}{}{reset} {gray}│{reset}", title_line);
-
-        println!("{gray}├{}┤{reset}", horiz);
-
-        // Front matter
-        let id_line = format!("{:<width$}", id, width = width - 8);
-        println!("{gray}│{reset} {gray}ID:   {reset}{} {gray}│{reset}", id_line);
-
-        let type_line = format!("{:<width$}", file_type, width = width - 8);
-        println!(
-            "{gray}│{reset} {gray}TYPE: {reset}{bold}{}{reset} {gray}│{reset}",
-            type_line
-        );
-
-        println!("{gray}├{}┤{reset}", horiz);
-
-        // Body
-        for line in self.body.lines() {
-            let content_line = format!("{:<width$}", line, width = width - 2);
-            println!("{gray}│{reset} {} {gray}│{reset}", content_line);
-        }
-
-        println!("{gray}╰{}╯{reset}", horiz);
     }
 }

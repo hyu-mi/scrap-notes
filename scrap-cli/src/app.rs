@@ -2,7 +2,7 @@ use crate::app_error::AppError;
 use crate::cli::CliCommand;
 
 use scrap::api::{FolderSummary, NoteSummary};
-use scrap::{Scrap, ScrapCommand, ScrapError, ScrapEvent};
+use scrap::{Scrap, ScrapError};
 use std::io::Read;
 use std::process::id;
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
@@ -33,43 +33,26 @@ impl App {
 
     pub fn init(self: &mut Self) -> Result<(), AppError> {
         // Sync workspace
-        if let Err(err) = self.scrap.handle_command(ScrapCommand::SyncWorkspace) {
-            return Err(AppError::WorkspaceSyncFailed(format!("{:?}", err)));
-        }
+        self.scrap
+            .sync_workspace()
+            .map_err(|err| AppError::WorkspaceSyncFailed(format!("{:?}", err)))?;
 
         // Update memory
-        match self.scrap.handle_command(ScrapCommand::ListNotes) {
-            Ok(event) => match event {
-                ScrapEvent::NoteList(summaries) => {
-                    for summary in summaries {
-                        self.insert_note(summary);
-                    }
+        match self.scrap.list_notes() {
+            Ok(notes) => {
+                for note in notes {
+                    self.insert_note(note);
                 }
-
-                _ => {
-                    return Err(AppError::Invalid(format!(
-                        "Return type not expected for command ListNotes."
-                    )));
-                }
-            },
+            }
             Err(err) => return Err(AppError::ListNotesFailed(format!("{:?}", err))),
         }
 
-        match self.scrap.handle_command(ScrapCommand::ListFolders) {
-            Ok(event) => match event {
-                ScrapEvent::FolderList(summaries) => {
-                    for summary in summaries {
-                        // println!("{}", summary.id);
-                        self.insert_folder(summary);
-                    }
+        match self.scrap.list_folders() {
+            Ok(folders) => {
+                for folder in folders {
+                    self.insert_folder(folder);
                 }
-
-                _ => {
-                    return Err(AppError::Invalid(format!(
-                        "Return type not expected for command ListFolders."
-                    )));
-                }
-            },
+            }
             Err(err) => return Err(AppError::ListFoldersFailed(format!("{:?}", err))),
         }
 
@@ -78,35 +61,32 @@ impl App {
 
     pub fn execute(self: &mut Self, command: CliCommand) {
         match command {
-            CliCommand::Open { note_id } => self.handle_open(note_id),
+            CliCommand::Open { id } => self.handle_open(id),
 
-            CliCommand::Note {
+            CliCommand::Add {
                 title,
                 file_type,
-                parent_id,
-            } => self.handle_note(title, file_type, parent_id),
+                parent,
+            } => self.handle_add(title, file_type, parent),
 
-            CliCommand::Folder {
-                display_name,
-                parent_id,
-            } => self.handle_folder(display_name, parent_id),
+            CliCommand::NewFolder { name, parent } => self.handle_new_folder(name, parent),
 
             _ => {}
         }
     }
 
-    fn handle_open(self: &Self, note_id: String) {
-        let ids = self.resolve_note_id(&note_id);
+    fn handle_open(self: &mut Self, id: String) {
+        let ids = self.resolve_note_id(&id);
 
         // No Note found
         if ids.len() == 0 {
-            eprintln!("Error: No note found matching '{}'.", note_id);
+            eprintln!("Error: No note found matching '{}'.", id);
             return;
         }
 
         // Multiple Notes found
         if ids.len() > 1 {
-            eprintln!("Ambiguous ID '{}'. Found {} notes:", note_id, ids.len());
+            eprintln!("Ambiguous ID '{}'. Found {} notes:", id, ids.len());
             for id in ids {
                 let name = self.notes.get(&id).map(|f| f.title.as_ref()).unwrap_or("unkown");
 
@@ -118,23 +98,41 @@ impl App {
             return;
         }
 
-        if let Some(id) = ids.get(0) {
-            println!("Pretend this is the content of the note({})!", id);
-        }
+        // if let Some(id) = ids.get(0) {
+        //     match self.scrap.handle_command(ScrapCommand::GetNoteBody(*id)) {
+        //         Ok(event) => {
+        //             //
+        //             match event {
+        //                 ScrapEvent::NoteBody(body) => print_note(body),
+        //                 _ => {
+        //                     // Unexpected returned event
+        //                     print!("Ambiguous Error: Unmatched Scrap event OR Scrap error.")
+        //                 }
+        //             }
+        //         }
+        //         Err(ScrapError::NoteNotFound(err_id)) => {
+        //             // Our ids are cached correctly
+        //             print!("Internal Error: Cached id '{}' does not exists anymore.", id);
+        //         }
+        //         Err(err) => {
+        //             // TODO: Handle scrap errors
+        //         }
+        //     }
+        // }
     }
 
-    fn handle_note(self: &mut Self, title: String, file_type: String, parent_id: String) {
-        let ids = self.resolve_folder_id(&parent_id);
+    fn handle_add(self: &mut Self, title: String, file_type: String, parent: String) {
+        let ids = self.resolve_folder_id(&parent);
 
         // No Folder found
         if ids.len() == 0 {
-            eprintln!("Error: No folder found matching '{}'.", parent_id);
+            eprintln!("Error: No folder found matching '{}'.", parent);
             return;
         }
 
         // Multiple Folders found
         if ids.len() > 1 {
-            eprintln!("Ambiguous ID '{}'. Found {} folders:", parent_id, ids.len());
+            eprintln!("Ambiguous ID '{}'. Found {} folders:", parent, ids.len());
             for id in ids {
                 let name = self
                     .folders
@@ -150,33 +148,25 @@ impl App {
             return;
         }
 
-        if let Some(id) = ids.get(0) {
-            match self.scrap.handle_command(ScrapCommand::CreateNote {
-                parent_id: *id,
-                title: title.clone(),
-                file_type,
-            }) {
-                Ok(event) => match event {
-                    ScrapEvent::NoteCreated(id) => println!("Note '{}' created with id: {}", title, id),
-                    _ => println!("Return type not expected for command CreateNote."),
-                },
-                Err(err) => println!("Failed to create note with error: {:?}", err),
-            }
+        let parent_id = ids.get(0).unwrap();
+        match self.scrap.create_note(*parent_id, title.clone(), file_type) {
+            Ok(note_id) => println!("Note '{}' created with id: {}", title, note_id),
+            Err(err) => println!("Failed to create note with error: {:?}", err),
         }
     }
 
-    fn handle_folder(self: &mut Self, display_name: String, parent_id: String) {
-        let ids = self.resolve_folder_id(&parent_id);
+    fn handle_new_folder(self: &mut Self, display_name: String, parent: String) {
+        let ids = self.resolve_folder_id(&parent);
 
         // No Folder found
         if ids.len() == 0 {
-            eprintln!("Error: No folder found matching '{}'.", parent_id);
+            eprintln!("Error: No folder found matching '{}'.", parent);
             return;
         }
 
         // Multiple Folders found
         if ids.len() > 1 {
-            eprintln!("Ambiguous ID '{}'. Found {} folders:", parent_id, ids.len());
+            eprintln!("Ambiguous ID '{}'. Found {} folders:", parent, ids.len());
             for id in ids {
                 let name = self
                     .folders
@@ -192,18 +182,10 @@ impl App {
             return;
         }
 
-        if let Some(id) = ids.get(0) {
-            match self.scrap.handle_command(ScrapCommand::CreateFolder {
-                parent_id: *id,
-                display_name: display_name.clone(),
-            }) {
-                Ok(event) => match event {
-                    ScrapEvent::FolderCreated(id) => println!("Folder '{}' created with id: {}", display_name, id),
-                    _ => println!("Return type not expected for command CreateFolder."),
-                },
-
-                Err(err) => println!("Failed to create note with error: {:?}", err),
-            }
+        let parent_id = ids.get(0).unwrap();
+        match self.scrap.create_folder(*parent_id, display_name.clone()) {
+            Ok(folder_id) => println!("Folder '{}' created with id: {}", display_name, folder_id),
+            Err(err) => println!("Failed to create note with error: {:?}", err),
         }
     }
 
@@ -272,4 +254,47 @@ impl App {
         out.copy_from_slice(&id.to_string().as_bytes()[..6]);
         return out;
     }
+}
+
+fn print_note(body: String) {
+    // Clanker made code ahead! 🤖
+
+    // let title = self.metadata.get_title();
+    // let file_type = self.metadata.get_file_type();
+    // let id = self.metadata.get_id().to_string();
+
+    let cyan = "\x1b[38;5;213m";
+    let gray = "\x1b[90m";
+    let bold = "\x1b[1m";
+    let reset = "\x1b[0m";
+
+    let width = 60;
+    let horiz = "─".repeat(width);
+
+    println!("{gray}╭{}╮{reset}", horiz);
+
+    let title_line = format!("{:<width$}", "Title", width = width - 5);
+    println!("{gray}│{reset} 📝 {cyan}{bold}{}{reset} {gray}│{reset}", title_line);
+
+    println!("{gray}├{}┤{reset}", horiz);
+
+    // // Front matter
+    // let id_line = format!("{:<width$}", id, width = width - 8);
+    // println!("{gray}│{reset} {gray}ID:   {reset}{} {gray}│{reset}", id_line);
+
+    // let type_line = format!("{:<width$}", file_type, width = width - 8);
+    // println!(
+    //     "{gray}│{reset} {gray}TYPE: {reset}{bold}{}{reset} {gray}│{reset}",
+    //     type_line
+    // );
+
+    // println!("{gray}├{}┤{reset}", horiz);
+
+    // Body
+    for line in body.lines() {
+        let content_line = format!("{:<width$}", line, width = width - 2);
+        println!("{gray}│{reset} {} {gray}│{reset}", content_line);
+    }
+
+    println!("{gray}╰{}╯{reset}", horiz);
 }
