@@ -5,7 +5,6 @@ use crate::workspace::WorkspaceError;
 
 #[derive(Debug)]
 pub enum AppError {
-    NameCollision { name: String, parent: Uuid },
     NoteNotFound(Uuid),
     FolderNotFound(Uuid),
 

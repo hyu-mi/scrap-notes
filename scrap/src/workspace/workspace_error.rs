@@ -23,7 +23,6 @@ impl WorkspaceError {
             io::ErrorKind::NotADirectory | io::ErrorKind::InvalidInput => return Self::InvalidPath,
             io::ErrorKind::NotFound => return Self::NotFound,
             io::ErrorKind::InvalidData => return Self::CorruptedFile,
-            io::ErrorKind::AlreadyExists => return Self::NameCollision,
             _ => return Self::Unknown(format!("{:?}", err)),
         }
     }

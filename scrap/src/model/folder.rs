@@ -9,6 +9,8 @@ pub struct Folder {
     metadata: FolderMetadata,
     relative_path: PathBuf,
     parent_id: Uuid,
+    child_notes: Vec<Uuid>,
+    child_folders: Vec<Uuid>,
 }
 
 impl Folder {
@@ -17,6 +19,8 @@ impl Folder {
             metadata,
             relative_path,
             parent_id,
+            child_notes: Vec::new(),
+            child_folders: Vec::new(),
         };
     }
 
@@ -37,7 +41,25 @@ impl Folder {
             metadata,
             relative_path,
             parent_id,
+            child_notes: Vec::new(),
+            child_folders: Vec::new(),
         };
+    }
+
+    pub fn add_child_note(self: &mut Self, id: Uuid) {
+        self.child_notes.push(id);
+    }
+
+    pub fn add_child_folder(self: &mut Self, id: Uuid) {
+        self.child_folders.push(id);
+    }
+
+    pub fn get_child_notes(self: &Self) -> &Vec<Uuid> {
+        return &self.child_notes;
+    }
+
+    pub fn get_child_folders(self: &Self) -> &Vec<Uuid> {
+        return &self.child_folders;
     }
 
     pub fn get_id(self: &Self) -> Uuid {

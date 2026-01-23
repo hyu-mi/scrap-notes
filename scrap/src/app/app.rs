@@ -28,7 +28,7 @@ impl App {
     pub fn load_workspace(self: &mut Self) -> Result<AppEvent, AppError> {
         let (loaded_notes, loaded_folders) = self
             .workspace
-            .scan_all(self.workspace_id.clone())
+            .scan_workspace(self.workspace_id.clone())
             .map_err(|err| AppError::Unknown(format!("Failed to load workspace with error: {:?}", err)))?;
 
         // TODO: Map and handle index errors to app errors
@@ -61,17 +61,22 @@ impl App {
                 return Ok(note_id);
             }
 
-            Err(WorkspaceError::NameCollision) => {
-                return Err(AppError::NameCollision {
-                    name: title,
-                    parent: parent_id,
-                });
-            }
-
             Err(err) => {
                 return Err(AppError::Workspace(err));
             }
         }
+    }
+
+    pub fn remove_note(self: &mut Self, id: Uuid) -> Result<(), AppError> {
+        // Update index
+        let note_to_delete = self.index.remove_note(id).map_err(AppError::from_index)?;
+
+        // Remove note file from workspace
+        self.workspace
+            .delete_note(&note_to_delete)
+            .map_err(|err| AppError::Unknown(format!("Workpace error: {:?}", err)))?;
+
+        return Ok(());
     }
 
     pub fn get_note(self: &Self, id: Uuid) -> Result<String, AppError> {
@@ -95,17 +100,23 @@ impl App {
                 return Ok(folder_id);
             }
 
-            Err(WorkspaceError::NameCollision) => {
-                return Err(AppError::NameCollision {
-                    name: display_name,
-                    parent: parent_id,
-                });
-            }
-
             Err(err) => {
                 return Err(AppError::Unknown(format!("Workpace error: {:?}", err)));
             }
         }
+    }
+
+    //
+    pub fn remove_folder(self: &mut Self, id: Uuid) -> Result<(), AppError> {
+        // Update index
+        let folder_to_delete = self.index.remove_folder(id).map_err(AppError::from_index)?;
+
+        // Remove folder directory from workspace along with all the notes inside
+        self.workspace
+            .delete_folder(&folder_to_delete)
+            .map_err(|err| AppError::Unknown(format!("Workpace error: {:?}", err)))?;
+
+        return Ok(());
     }
 
     fn get_directory(self: &Self, id: Uuid) -> Result<&Path, AppError> {

@@ -41,6 +41,14 @@ impl Scrap {
             .map_err(ScrapError::from_app);
     }
 
+    pub fn remove_note(self: &mut Self, id: Uuid) -> Result<(), ScrapError> {
+        return self.app.remove_note(id).map_err(ScrapError::from_app);
+    }
+
+    pub fn remove_folder(self: &mut Self, id: Uuid) -> Result<(), ScrapError> {
+        return self.app.remove_folder(id).map_err(ScrapError::from_app);
+    }
+
     // pub fn get_note(self: &mut Self) -> Result<(), ScrapError> {
     //     //
     // }

@@ -115,6 +115,73 @@ impl Index {
         return Ok(());
     }
 
+    pub fn remove_note(self: &mut Self, id: Uuid) -> Result<Note, IndexError> {
+        let note = self.notes.remove(&id).ok_or(IndexError::NoteNotFound(id))?;
+
+        let title = note.get_title();
+        if let Some(ids) = self.title_index.get_mut(title) {
+            ids.retain(|v| *v != id);
+
+            if ids.is_empty() {
+                self.title_index.remove(title);
+            }
+        }
+
+        let file_type = note.get_file_type();
+        if let Some(ids) = self.file_type_index.get_mut(file_type) {
+            ids.retain(|v| *v != id);
+
+            if ids.is_empty() {
+                self.file_type_index.remove(file_type);
+            }
+        }
+
+        return Ok(note);
+    }
+
+    /// TODO: This function would remove the folder and relocate child notes to parent directory
+    pub fn remove_folder(self: &mut Self, id: Uuid) -> Result<Folder, IndexError> {
+        // Clear cached folder ids
+        let folder = self.folders.remove(&id).ok_or(IndexError::FolderNotFound(id))?;
+
+        let display_name = folder.get_display_name();
+        if let Some(ids) = self.display_name_index.get_mut(display_name) {
+            ids.retain(|v| *v != id);
+
+            if ids.is_empty() {
+                self.display_name_index.remove(display_name);
+            }
+        }
+
+        // Remove all child notes
+        for child_note in folder.get_child_notes() {
+            self.remove_note(*child_note);
+        }
+
+        // recursive into child folders
+        for child_folder in folder.get_child_folders() {
+            self.remove_folder(*child_folder);
+        }
+
+        return Ok(folder);
+    }
+
+    pub fn list_notes(self: &Self) -> Result<Vec<NoteSummary>, IndexError> {
+        return Ok(self
+            .notes
+            .values()
+            .map(|n| NoteSummary::new(n.get_id().clone(), n.get_title(), n.get_file_type()))
+            .collect());
+    }
+
+    pub fn list_folders(self: &Self) -> Result<Vec<FolderSummary>, IndexError> {
+        return Ok(self
+            .folders
+            .values()
+            .map(|f| FolderSummary::new(f.get_id().clone(), f.get_display_name()))
+            .collect());
+    }
+
     pub fn get_note(self: &Self, id: Uuid) -> Result<&Note, IndexError> {
         return self.notes.get(&id).ok_or(IndexError::NoteNotFound(id));
     }
@@ -171,20 +238,10 @@ impl Index {
         return Ok(folders);
     }
 
-    pub fn list_notes(self: &Self) -> Result<Vec<NoteSummary>, IndexError> {
-        return Ok(self
-            .notes
-            .values()
-            .map(|n| NoteSummary::new(n.get_id().clone(), n.get_title(), n.get_file_type()))
-            .collect());
-    }
+    pub fn get_note_body(self: &Self, id: Uuid) -> Result<String, IndexError> {
+        let note = self.notes.get(&id).ok_or(IndexError::NoteNotFound(id))?;
 
-    pub fn list_folders(self: &Self) -> Result<Vec<FolderSummary>, IndexError> {
-        return Ok(self
-            .folders
-            .values()
-            .map(|f| FolderSummary::new(f.get_id().clone(), f.get_display_name()))
-            .collect());
+        return Ok(note.get_body().to_string());
     }
 
     pub fn get_note_directory(self: &Self, id: Uuid) -> Result<&Path, IndexError> {
@@ -201,11 +258,5 @@ impl Index {
             .get(&id)
             .map(|f| f.get_relative_path())
             .ok_or(IndexError::FolderNotFound(id));
-    }
-
-    pub fn get_note_body(self: &Self, id: Uuid) -> Result<String, IndexError> {
-        let note = self.notes.get(&id).ok_or(IndexError::NoteNotFound(id))?;
-
-        return Ok(note.get_body().to_string());
     }
 }

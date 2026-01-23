@@ -33,8 +33,8 @@ impl Workspace {
         return Self { workspace_dir };
     }
 
-    pub fn scan_all(self: &Self, workspace_id: Uuid) -> Result<(Vec<Note>, Vec<Folder>), WorkspaceError> {
-        return Self::load_directory(&self.workspace_dir, &PathBuf::new(), workspace_id);
+    pub fn scan_workspace(self: &Self, workspace_id: Uuid) -> Result<(Vec<Note>, Vec<Folder>), WorkspaceError> {
+        return Self::scan_directory(&self.workspace_dir, &PathBuf::new(), workspace_id);
     }
 
     /// Creates a new note with embedded metadata and saves it to the workspace.
@@ -64,12 +64,12 @@ impl Workspace {
     /// Saves note's content to the corresponding file in storage.
     /// TODO: changing note's title should trigger file rename to be consistent
     pub fn save_note(self: &Self, note: &Note) -> Result<WorkspaceEvent, WorkspaceError> {
-        let target_dir = note.get_relative_path();
+        let workspace_dir = &self.workspace_dir;
+
+        let note_path = note.get_relative_path();
         let content_to_save = note.compose();
 
-        if let Err(err) = fs_ops::write_file(&self.workspace_dir, &target_dir, &content_to_save) {
-            return Err(WorkspaceError::from_io(err));
-        }
+        fs_ops::write_file(workspace_dir, &note_path, &content_to_save).map_err(WorkspaceError::from_io)?;
 
         return Ok(WorkspaceEvent::NoteContentSaved);
     }
@@ -79,6 +79,16 @@ impl Workspace {
         let data = Self::load_note_data(&self.workspace_dir, file_path)?;
 
         return Ok(Note::from_data(file_path.to_path_buf(), data));
+    }
+
+    pub fn delete_note(self: &Self, note: &Note) -> Result<(), WorkspaceError> {
+        let workspace_dir = &self.workspace_dir;
+
+        let note_path = note.get_relative_path();
+
+        fs_ops::delete_file(workspace_dir, note_path).map_err(WorkspaceError::from_io)?;
+
+        return Ok(());
     }
 
     /// Creates a new folder with embedded metadata and saves it to the workspace.
@@ -132,14 +142,25 @@ impl Workspace {
         return Ok(WorkspaceEvent::FolderContentSaved);
     }
 
-    /// Loads a folder and it's metadata from the specified folder path.
-    pub fn load_folder(self: &Self, folder_dir: &Path, parent_id: Uuid) -> Result<Folder, WorkspaceError> {
+    pub fn delete_folder(self: &Self, folder: &Folder) -> Result<(), WorkspaceError> {
         let workspace_dir = &self.workspace_dir;
 
-        let data = Self::load_folder_data(workspace_dir, folder_dir)?;
+        let folder_dir = folder.get_relative_path();
 
-        return Ok(Folder::from_data(folder_dir.to_path_buf(), data, parent_id));
+        fs_ops::delete_dir(workspace_dir, folder_dir);
+
+        return Ok(());
     }
+
+    // TODO: folder를 로드할 때 하위에 포함된 모든 note도 함께 로드해야 하지 않나?
+    // /// Loads a folder and it's metadata from the specified folder path.
+    // pub fn load_folder(self: &Self, folder_dir: &Path, parent_id: Uuid) -> Result<Folder, WorkspaceError> {
+    //     let workspace_dir = &self.workspace_dir;
+
+    //     let data = Self::load_folder_data(workspace_dir, folder_dir)?;
+
+    //     return Ok(Folder::from_data(folder_dir.to_path_buf(), data, parent_id));
+    // }
 
     /// Reads and parses the raw disk content into a NoteData object.
     fn load_note_data(workspace_dir: &Path, file_path: &Path) -> Result<NoteData, WorkspaceError> {
@@ -219,7 +240,7 @@ impl Workspace {
     }
 
     ///
-    fn load_directory(
+    fn scan_directory(
         workspace_dir: &Path,
         current_dir: &Path,
         parent_id: Uuid,
@@ -256,12 +277,24 @@ impl Workspace {
                 let folder_dir = relative_path;
 
                 let folder_data = Self::load_folder_data(workspace_dir, &folder_dir)?;
-                let folder = Folder::from_data(folder_dir.clone(), folder_data, parent_id);
+                let mut folder = Folder::from_data(folder_dir.clone(), folder_data, parent_id);
                 let folder_id = folder.get_id();
-                folders.push(folder);
 
                 // Recurse into subfolder
-                let (child_notes, child_folders) = Self::load_directory(workspace_dir, &folder_dir, folder_id)?;
+                let (child_notes, child_folders) = Self::scan_directory(workspace_dir, &folder_dir, folder_id)?;
+
+                // Collect all notes whithin this folder
+                for child_note in &child_notes {
+                    folder.add_child_note(child_note.get_id());
+                }
+
+                // Collect all folders whithin this folder
+                for child_folder in &child_folders {
+                    folder.add_child_folder(child_folder.get_id());
+                }
+
+                folders.push(folder);
+
                 notes.extend(child_notes);
                 folders.extend(child_folders);
             }
