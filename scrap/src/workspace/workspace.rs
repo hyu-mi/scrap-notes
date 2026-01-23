@@ -13,9 +13,14 @@ use std::path::PathBuf;
 use uuid::Uuid;
 use uuid::uuid;
 
-const MAX_COLLISION_RETRIES: u32 = 256;
-const MAX_FILENAME_LEN: usize = 64;
-const MAX_FOLDERNAME_LEN: usize = 32;
+const FILENAME_LEN: usize = 64;
+const FOLDERNAME_LEN: usize = 32;
+const FILENAME_SEPARATOR_LEN: usize = 4; // The length of "____"
+const UUID_LEN: usize = 36;
+
+const MAX_FILENAME_LEN: usize = FILENAME_LEN + FILENAME_SEPARATOR_LEN + UUID_LEN;
+const MAX_FOLDERNAME_LEN: usize = FOLDERNAME_LEN + FILENAME_SEPARATOR_LEN + UUID_LEN;
+
 const METADATA_FILENAME: &str = "_metadata.txt";
 const NOTE_FILE_EXTENSION: &str = "txt";
 
@@ -36,17 +41,20 @@ impl Workspace {
     pub fn create_note(self: &Self, parent_dir: &Path, title: &str, file_type: &str) -> Result<Note, WorkspaceError> {
         let workspace_dir = &self.workspace_dir;
 
-        // Reserve a unique path by creating an empty file
-        let file_path = Self::create_unique_note_file(workspace_dir, parent_dir, title)?;
+        let note_id = Uuid::new_v4();
+
+        // Create unique note file using slug and ID
+        let file_path = Self::create_note_file(workspace_dir, parent_dir, title, note_id)?;
 
         // Prepare the metadata content
-        let metadata = NoteMetadata::new(Uuid::new_v4(), title, file_type);
+        let metadata = NoteMetadata::new(note_id, title, file_type);
         let front_matter = metadata.compose();
 
-        // Commit frontmatter to disk
+        // Save frontmatter to disk
         if let Err(err) = fs_ops::write_file(workspace_dir, &file_path, &front_matter) {
-            // Try to delete the empty file
+            // Cleanup the empty note file if saving fails
             let _ = fs_ops::delete_file(workspace_dir, &file_path);
+
             return Err(WorkspaceError::from_io(err));
         }
 
@@ -82,19 +90,30 @@ impl Workspace {
     ) -> Result<Folder, WorkspaceError> {
         let workspace_dir = &self.workspace_dir;
 
-        // reserve a unique folder directory
-        let folder_dir = Self::create_unique_folder_dir(workspace_dir, parent_dir, display_name)?;
+        let folder_id = Uuid::new_v4();
+
+        // Create unique folder directory using slug and ID
+        let folder_dir = Self::create_folder_dir(workspace_dir, parent_dir, display_name, folder_id)?;
+        let metadata_path = folder_dir.join(METADATA_FILENAME);
 
         // Create folder metadata file
-        let metadata = match Self::create_folder_metadata(workspace_dir, &folder_dir, display_name) {
-            Ok(metadata) => metadata,
-            Err(err) => {
-                // Try to remove the newly created folder directory
-                fs_ops::delete_dir(workspace_dir, &folder_dir);
+        if let Err(err) = fs_ops::create_file(workspace_dir, &metadata_path) {
+            // Cleanup folder if metadata creation fails
+            let _ = fs_ops::delete_dir(workspace_dir, &folder_dir);
 
-                return Err(err);
-            }
-        };
+            return Err(WorkspaceError::from_io(err));
+        }
+
+        // Write metadata content on disk
+        let metadata = FolderMetadata::new(folder_id, display_name);
+        let metadata_content = metadata.compose();
+
+        if let Err(err) = fs_ops::write_file(workspace_dir, &metadata_path, &metadata_content) {
+            // Cleanup folder if metadata writing fails
+            let _ = fs_ops::delete_dir(workspace_dir, &folder_dir);
+
+            return Err(WorkspaceError::from_io(err));
+        }
 
         return Ok(Folder::new(folder_dir.to_path_buf(), metadata, parent_id));
     }
@@ -140,36 +159,6 @@ impl Workspace {
         return Ok(data);
     }
 
-    /// Creates a new folder metadata file with embedded metadata and saves it to the workspace.
-    /// Returns `FolderMetadataAlreadyExists` if the folder already has metadata.
-    fn create_folder_metadata(
-        workspace_dir: &Path,
-        folder_dir: &Path,
-        display_name: &str,
-    ) -> Result<FolderMetadata, WorkspaceError> {
-        let metadata_path = folder_dir.join(METADATA_FILENAME);
-
-        // Create metadata file
-        fs_ops::create_file(workspace_dir, &metadata_path).map_err(|err| match err.kind() {
-            std::io::ErrorKind::AlreadyExists => WorkspaceError::FolderMetadataAlreadyExists,
-            _ => WorkspaceError::from_io(err),
-        })?;
-
-        // Prepare the data
-        let metadata = FolderMetadata::new(Uuid::new_v4(), display_name);
-        let metadata_content = metadata.compose();
-
-        // Commit metadata to disk
-        if let Err(err) = fs_ops::write_file(workspace_dir, &metadata_path, &metadata_content) {
-            // Try to remove the newly created metadata file if write fails
-            let _ = fs_ops::delete_file(workspace_dir, &metadata_path);
-
-            return Err(WorkspaceError::from_io(err));
-        }
-
-        return Ok(metadata);
-    }
-
     /// Reads and parses the raw disk content into a FolderData object.
     fn load_folder_data(workspace_dir: &Path, folder_dir: &Path) -> Result<FolderData, WorkspaceError> {
         let metadata_path = folder_dir.join(METADATA_FILENAME);
@@ -187,62 +176,46 @@ impl Workspace {
         return Ok(data);
     }
 
-    /// Attempts to create a new note file
-    /// until a unique path is found or the retry limit is reached.
-    fn create_unique_note_file(
+    /// Creates a new note file with a name composed of
+    /// the slugified title name and the unique note ID.
+    fn create_note_file(
         workspace_dir: &Path,
         parent_dir: &Path,
         title_name: &str,
+        note_id: Uuid,
     ) -> Result<PathBuf, WorkspaceError> {
         // Sanitize the title name to ensure valid file name
         let base_name = sanitize_name(title_name, MAX_FILENAME_LEN);
 
-        for i in 0..MAX_COLLISION_RETRIES {
-            let filename = if i == 0 {
-                format!("{}.{}", base_name, NOTE_FILE_EXTENSION)
-            } else {
-                format!("{}_{}.{}", base_name, i, NOTE_FILE_EXTENSION)
-            };
+        let filename = format!("{}____{}.{}", base_name, note_id.to_string(), NOTE_FILE_EXTENSION);
+        let relative_file_path = parent_dir.join(&filename);
 
-            let relative_file_path = parent_dir.join(&filename);
-
-            match fs_ops::create_file(workspace_dir, &relative_file_path) {
-                Ok(file) => return Ok(relative_file_path),
-                Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
-                Err(err) => return Err(WorkspaceError::from_io(err)),
-            }
+        match fs_ops::create_dir(workspace_dir, &relative_file_path) {
+            Ok(_) => return Ok(relative_file_path),
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => return Err(WorkspaceError::NameCollision),
+            Err(err) => return Err(WorkspaceError::from_io(err)),
         }
-
-        return Err(WorkspaceError::FileNameExhausted);
     }
 
-    /// Attempts to create a new folder directory
-    /// until a unique path is found or the retry limit is reached.
-    fn create_unique_folder_dir(
+    /// Creates a new folder directory with a name composed of
+    /// the slugified display name and the unique folder ID.
+    fn create_folder_dir(
         workspace_dir: &Path,
         parent_dir: &Path,
         display_name: &str,
+        folder_id: Uuid,
     ) -> Result<PathBuf, WorkspaceError> {
         // Sanitize the display name to ensure valid folder name
         let base_name = sanitize_name(display_name, MAX_FOLDERNAME_LEN);
 
-        for i in 0..MAX_COLLISION_RETRIES {
-            let foldername = if i == 0 {
-                format!("{}", base_name)
-            } else {
-                format!("{}_{}", base_name, i)
-            };
+        let folder_name = format!("{}____{}", base_name, folder_id.to_string());
+        let relative_folder_dir = parent_dir.join(&folder_name);
 
-            let relative_folder_path = parent_dir.join(&foldername);
-
-            match fs_ops::create_dir(workspace_dir, &relative_folder_path) {
-                Ok(_) => return Ok(relative_folder_path),
-                Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
-                Err(err) => return Err(WorkspaceError::from_io(err)),
-            }
+        match fs_ops::create_dir(workspace_dir, &relative_folder_dir) {
+            Ok(_) => return Ok(relative_folder_dir),
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => return Err(WorkspaceError::NameCollision),
+            Err(err) => return Err(WorkspaceError::from_io(err)),
         }
-
-        return Err(WorkspaceError::FolderNameExhausted);
     }
 
     ///

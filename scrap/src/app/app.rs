@@ -61,7 +61,7 @@ impl App {
                 return Ok(note_id);
             }
 
-            Err(WorkspaceError::FileNameExhausted) => {
+            Err(WorkspaceError::NameCollision) => {
                 return Err(AppError::NameCollision {
                     name: title,
                     parent: parent_id,
@@ -95,7 +95,7 @@ impl App {
                 return Ok(folder_id);
             }
 
-            Err(WorkspaceError::FileNameExhausted) => {
+            Err(WorkspaceError::NameCollision) => {
                 return Err(AppError::NameCollision {
                     name: display_name,
                     parent: parent_id,
