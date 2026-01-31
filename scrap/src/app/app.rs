@@ -17,12 +17,20 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(workspace_dir: PathBuf) -> Self {
+    pub fn new() -> Self {
         return Self {
-            workspace: Workspace::new(workspace_dir),
+            workspace: Workspace::new(),
             workspace_id: uuid!("3e206920-6c75-7620-7520-6d722063656f"),
             index: Index::new(),
         };
+    }
+
+    pub fn init(self: &mut Self, workspace_path: &Path) -> Result<(), AppError> {
+        self.workspace
+            .create_workspace(workspace_path)
+            .map_err(|err| AppError::Unknown(format!("Workpace error: {:?}", err)))?;
+
+        return Ok(());
     }
 
     pub fn load_workspace(self: &mut Self) -> Result<AppEvent, AppError> {
@@ -69,11 +77,11 @@ impl App {
 
     pub fn remove_note(self: &mut Self, id: Uuid) -> Result<(), AppError> {
         // Update index
-        let note_to_delete = self.index.remove_note(id).map_err(AppError::from_index)?;
+        let mut note_to_delete = self.index.remove_note(id).map_err(AppError::from_index)?;
 
-        // Remove note file from workspace
+        // Move note to trash
         self.workspace
-            .delete_note(&note_to_delete)
+            .move_note_to_trash(&mut note_to_delete)
             .map_err(|err| AppError::Unknown(format!("Workpace error: {:?}", err)))?;
 
         return Ok(());

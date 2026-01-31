@@ -2,6 +2,7 @@ use std::io;
 
 #[derive(Debug)]
 pub enum WorkspaceError {
+    NoWorkspaceDirectoryFound,
     StorageFull,
     PermissionDenied,
 

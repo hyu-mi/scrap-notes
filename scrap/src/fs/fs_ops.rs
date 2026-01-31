@@ -27,7 +27,6 @@ pub fn delete_file(workspace_dir: &Path, target_dir: &Path) -> io::Result<()> {
     return Ok(());
 }
 
-// TODO: Shouldn't I care about puter loosing power mid write?...
 pub fn write_file(workspace_dir: &Path, target_dir: &Path, content: &str) -> io::Result<()> {
     let target = resolve_existing_path(workspace_dir, target_dir)?;
 
@@ -40,6 +39,15 @@ pub fn write_file(workspace_dir: &Path, target_dir: &Path, content: &str) -> io:
     file.write_all(content.as_bytes())?;
 
     file.sync_all()?;
+
+    return Ok(());
+}
+
+pub fn move_file(workspace_dir: &Path, current_path: &Path, new_path: &Path) -> io::Result<()> {
+    let from = resolve_existing_path(workspace_dir, current_path)?;
+    let to = resolve_new_path(workspace_dir, new_path)?; // resolve_new_path doesn't verify if directory exists...
+
+    fs::rename(from, to)?;
 
     return Ok(());
 }
@@ -60,6 +68,14 @@ pub fn read_directory(workspace_dir: &Path, target_dir: &Path) -> io::Result<Rea
     let target_dir = resolve_existing_dir(workspace_dir, target_dir)?;
 
     return fs::read_dir(target_dir);
+}
+
+pub fn ensure_dir(workspace_dir: &Path, target_dir: &Path) -> io::Result<()> {
+    let target = resolve_new_dir(workspace_dir, target_dir)?;
+
+    fs::create_dir_all(&target)?;
+
+    return Ok(());
 }
 
 fn resolve_new_path(workspace_dir: &Path, target_dir: &Path) -> io::Result<PathBuf> {

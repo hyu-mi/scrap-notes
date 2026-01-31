@@ -25,21 +25,45 @@ const METADATA_FILENAME: &str = "_metadata.txt";
 const NOTE_FILE_EXTENSION: &str = "txt";
 
 pub struct Workspace {
-    workspace_dir: PathBuf,
+    workspace_dir: Option<PathBuf>,
 }
 
 impl Workspace {
-    pub fn new(workspace_dir: PathBuf) -> Self {
-        return Self { workspace_dir };
+    pub fn new() -> Self {
+        return Self { workspace_dir: None };
+    }
+
+    pub fn create_workspace(self: &mut Self, target: &Path) -> Result<(), WorkspaceError> {
+        // Make sure workspace directory exists and is valid
+        std::fs::create_dir_all(&target).map_err(WorkspaceError::from_io)?;
+        let workspace_dir = target.canonicalize().map_err(WorkspaceError::from_io)?;
+
+        // Also create cache and trash folders
+        let tash_dir = workspace_dir.join(".trash");
+        fs_ops::create_dir(&workspace_dir, &tash_dir);
+
+        let cache_dir = workspace_dir.join(".cache");
+        fs_ops::create_dir(&workspace_dir, &cache_dir);
+
+        self.workspace_dir = Some(workspace_dir);
+        return Ok(());
     }
 
     pub fn scan_workspace(self: &Self, workspace_id: Uuid) -> Result<(Vec<Note>, Vec<Folder>), WorkspaceError> {
-        return Self::scan_directory(&self.workspace_dir, &PathBuf::new(), workspace_id);
+        let workspace_dir = self
+            .workspace_dir
+            .as_ref()
+            .ok_or(WorkspaceError::NoWorkspaceDirectoryFound)?;
+
+        return Self::scan_directory(workspace_dir, &PathBuf::new(), workspace_id);
     }
 
     /// Creates a new note with embedded metadata and saves it to the workspace.
     pub fn create_note(self: &Self, parent_dir: &Path, title: &str, file_type: &str) -> Result<Note, WorkspaceError> {
-        let workspace_dir = &self.workspace_dir;
+        let workspace_dir = self
+            .workspace_dir
+            .as_ref()
+            .ok_or(WorkspaceError::NoWorkspaceDirectoryFound)?;
 
         let note_id = Uuid::new_v4();
 
@@ -64,7 +88,10 @@ impl Workspace {
     /// Saves note's content to the corresponding file in storage.
     /// TODO: changing note's title should trigger file rename to be consistent
     pub fn save_note(self: &Self, note: &Note) -> Result<WorkspaceEvent, WorkspaceError> {
-        let workspace_dir = &self.workspace_dir;
+        let workspace_dir = self
+            .workspace_dir
+            .as_ref()
+            .ok_or(WorkspaceError::NoWorkspaceDirectoryFound)?;
 
         let note_path = note.get_relative_path();
         let content_to_save = note.compose();
@@ -76,17 +103,33 @@ impl Workspace {
 
     /// Loads a note and it's metadata from the specified path.
     pub fn load_note(self: &Self, file_path: &Path) -> Result<Note, WorkspaceError> {
-        let data = Self::load_note_data(&self.workspace_dir, file_path)?;
+        let workspace_dir = self
+            .workspace_dir
+            .as_ref()
+            .ok_or(WorkspaceError::NoWorkspaceDirectoryFound)?;
+
+        let data = Self::load_note_data(workspace_dir, file_path)?;
 
         return Ok(Note::from_data(file_path.to_path_buf(), data));
     }
 
-    pub fn delete_note(self: &Self, note: &Note) -> Result<(), WorkspaceError> {
-        let workspace_dir = &self.workspace_dir;
+    pub fn move_note_to_trash(self: &Self, note: &mut Note) -> Result<(), WorkspaceError> {
+        let workspace_dir = self
+            .workspace_dir
+            .as_ref()
+            .ok_or(WorkspaceError::NoWorkspaceDirectoryFound)?;
 
-        let note_path = note.get_relative_path();
+        let trash_dir = Path::new(".trash");
+        fs_ops::ensure_dir(workspace_dir, trash_dir).map_err(WorkspaceError::from_io)?;
 
-        fs_ops::delete_file(workspace_dir, note_path).map_err(WorkspaceError::from_io)?;
+        let current_path = note.get_relative_path();
+
+        let file_name = current_path.file_name().ok_or(WorkspaceError::InvalidPath)?;
+        let new_path = trash_dir.join(file_name);
+
+        fs_ops::move_file(workspace_dir, current_path, &new_path).map_err(WorkspaceError::from_io)?;
+
+        note.mark_as_deleted();
 
         return Ok(());
     }
@@ -98,7 +141,10 @@ impl Workspace {
         display_name: &str,
         parent_id: Uuid,
     ) -> Result<Folder, WorkspaceError> {
-        let workspace_dir = &self.workspace_dir;
+        let workspace_dir = self
+            .workspace_dir
+            .as_ref()
+            .ok_or(WorkspaceError::NoWorkspaceDirectoryFound)?;
 
         let folder_id = Uuid::new_v4();
 
@@ -131,19 +177,27 @@ impl Workspace {
     /// Saves folder's metadata content to the workspace.
     /// TODO: changing folder's display name should trigger folder rename
     pub fn save_folder(self: &Self, folder: &Folder) -> Result<WorkspaceEvent, WorkspaceError> {
+        let workspace_dir = self
+            .workspace_dir
+            .as_ref()
+            .ok_or(WorkspaceError::NoWorkspaceDirectoryFound)?;
+
         // Get the folder's metadata file
         let metadata_path = folder.get_metadata_file_dir();
-        let metadata_file = fs_ops::open_file(&self.workspace_dir, &metadata_path).map_err(WorkspaceError::from_io)?;
+        let metadata_file = fs_ops::open_file(workspace_dir, &metadata_path).map_err(WorkspaceError::from_io)?;
 
         // Compose new data
         let content_to_save = folder.compose();
-        fs_ops::write_file(&self.workspace_dir, &metadata_path, &content_to_save).map_err(WorkspaceError::from_io)?;
+        fs_ops::write_file(workspace_dir, &metadata_path, &content_to_save).map_err(WorkspaceError::from_io)?;
 
         return Ok(WorkspaceEvent::FolderContentSaved);
     }
 
     pub fn delete_folder(self: &Self, folder: &Folder) -> Result<(), WorkspaceError> {
-        let workspace_dir = &self.workspace_dir;
+        let workspace_dir = self
+            .workspace_dir
+            .as_ref()
+            .ok_or(WorkspaceError::NoWorkspaceDirectoryFound)?;
 
         let folder_dir = folder.get_relative_path();
 
@@ -211,7 +265,7 @@ impl Workspace {
         let filename = format!("{}____{}.{}", base_name, note_id.to_string(), NOTE_FILE_EXTENSION);
         let relative_file_path = parent_dir.join(&filename);
 
-        match fs_ops::create_dir(workspace_dir, &relative_file_path) {
+        match fs_ops::create_file(workspace_dir, &relative_file_path) {
             Ok(_) => return Ok(relative_file_path),
             Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => return Err(WorkspaceError::NameCollision),
             Err(err) => return Err(WorkspaceError::from_io(err)),
@@ -252,8 +306,15 @@ impl Workspace {
             let entry = entry.map_err(WorkspaceError::from_io)?;
             let entry_name = entry.file_name();
 
+            let entry_name_str = entry_name.to_string_lossy();
+
             // Skip folder metadata files
-            if entry_name.to_string_lossy() == METADATA_FILENAME {
+            if entry_name_str == METADATA_FILENAME {
+                continue;
+            }
+
+            // Skip trash and cache folders
+            if entry_name_str == ".trash" || entry_name_str == ".cache" {
                 continue;
             }
 

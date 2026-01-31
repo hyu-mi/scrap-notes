@@ -1,9 +1,10 @@
 use crate::app_error::AppError;
-use crate::cli::CliCommand;
+use crate::cli::{CliCommand, ItemKind};
 
 use scrap::api::{FolderSummary, NoteSummary};
 use scrap::{Scrap, ScrapError};
 use std::io::Read;
+use std::path::Path;
 use std::process::id;
 use std::{collections::HashMap, path::PathBuf, str::FromStr};
 use uuid::{Uuid, uuid};
@@ -19,9 +20,9 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(workspace_dir: PathBuf) -> Self {
+    pub fn new() -> Self {
         return Self {
-            scrap: Scrap::new(workspace_dir),
+            scrap: Scrap::new(),
             workspace_id: uuid!("3e206920-6c75-7620-7520-6d722063656f"),
 
             notes: HashMap::new(),
@@ -31,7 +32,12 @@ impl App {
         };
     }
 
-    pub fn init(self: &mut Self) -> Result<(), AppError> {
+    pub fn init(self: &mut Self, workspace_path: &Path) -> Result<(), AppError> {
+        // Set workspace directory
+        self.scrap
+            .set_workspace(workspace_path)
+            .map_err(|err| AppError::WorkspaceInitializationFailed(format!("{:?}", err)))?;
+
         // Sync workspace
         self.scrap
             .sync_workspace()
@@ -69,9 +75,9 @@ impl App {
                 parent,
             } => self.handle_add(title, file_type, parent),
 
-            CliCommand::NewFolder { name, parent } => self.handle_new_folder(name, parent),
+            CliCommand::Remove { kind, id } => self.handle_remove(kind, id),
 
-            _ => {}
+            CliCommand::NewFolder { name, parent } => self.handle_new_folder(name, parent),
         }
     }
 
@@ -153,6 +159,33 @@ impl App {
             Ok(note_id) => println!("Note '{}' created with id: {}", title, note_id),
             Err(err) => println!("Failed to create note with error: {:?}", err),
         }
+    }
+
+    fn handle_remove(self: &mut Self, kind: ItemKind, id: String) {
+        let ids = self.resolve_note_id(&id);
+
+        // No Note found
+        if ids.len() == 0 {
+            eprintln!("Error: No note found matching '{}'.", id);
+            return;
+        }
+
+        // Multiple Notes found
+        if ids.len() > 1 {
+            eprintln!("Ambiguous ID '{}'. Found {} notes:", id, ids.len());
+            for id in ids {
+                let name = self.notes.get(&id).map(|f| f.title.as_ref()).unwrap_or("unkown");
+
+                eprintln!("  {}: {}", id, name);
+            }
+
+            eprintln!("Please use a full UUID to specify.");
+
+            return;
+        }
+
+        let id = ids.get(0).unwrap().clone();
+        self.scrap.remove_note(id);
     }
 
     fn handle_new_folder(self: &mut Self, display_name: String, parent: String) {

@@ -1,7 +1,7 @@
 use crate::api::{FolderSummary, NoteSummary, ScrapError};
 use crate::app::{App, AppEvent};
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 pub struct Scrap {
@@ -9,10 +9,14 @@ pub struct Scrap {
 }
 
 impl Scrap {
-    pub fn new(workspace_dir: PathBuf) -> Self {
-        Self {
-            app: App::new(workspace_dir),
-        }
+    pub fn new() -> Self {
+        Self { app: App::new() }
+    }
+
+    pub fn set_workspace(self: &mut Self, workspace_path: &Path) -> Result<(), ScrapError> {
+        self.app.init(workspace_path).map_err(ScrapError::from_app)?;
+
+        return Ok(());
     }
 
     pub fn sync_workspace(self: &mut Self) -> Result<(), ScrapError> {

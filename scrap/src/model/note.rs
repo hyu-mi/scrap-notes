@@ -10,6 +10,7 @@ pub struct Note {
     metadata: NoteMetadata,
     body: String,
     is_dirty: bool,
+    is_deleted: bool,
     // TODO: Need a last modified var so we can sync without opening the file...
 }
 
@@ -20,6 +21,7 @@ impl Note {
             metadata,
             body: String::new(),
             is_dirty: false,
+            is_deleted: false,
         };
     }
 
@@ -44,6 +46,7 @@ impl Note {
             metadata,
             body: data.body,
             is_dirty: false,
+            is_deleted: false,
         };
     }
 
@@ -65,6 +68,10 @@ impl Note {
 
     pub fn get_body(self: &Self) -> &str {
         return &self.body;
+    }
+
+    pub fn mark_as_deleted(self: &mut Self) {
+        self.is_deleted = true;
     }
 
     pub fn compose(self: &Self) -> String {

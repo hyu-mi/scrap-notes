@@ -21,7 +21,7 @@ pub enum CliCommand {
     },
 
     Remove {
-        #[arg(value_enum)]
+        #[arg(value_enum, short, long)]
         kind: ItemKind,
         id: String,
     },
